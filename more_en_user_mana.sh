@@ -219,6 +219,7 @@ case $action in
             f)
                 if [ ! -f $userlist ];then
                     echo "输入的必须是一个用户列表文件！"
+                    exit 1
                 fi
                 awk '{print $1}' $userlist|while read user;do
                 username_rule_check=$(check_username ${user})
