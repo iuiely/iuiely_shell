@@ -1,0 +1,135 @@
+#################################################################################
+## 关闭服务 ##
+function close_services() {
+	ssh root@$ip "/usr/bin/systemctl list-unit-files|grep enabled |grep service|egrep -v 'sshd|rsyslog|systemd|getty|irqbalance|lvm2|postfix|crond|autovt|dbus-org'|awk '{print \"/usr/bin/systemctl \" \"disable \" \$1}'|sh" >>$file 2>&1
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 关闭IPV6的第一种方式 ## 
+function close_ipv6() {
+ssh root@$ip "
+	echo "IPV6INIT=no" >> /etc/sysconfig/network &&
+	echo "NETWORKING_IPV6=no" >> /etc/sysconfig/network
+	"
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 增加zabbix用户 ##
+function add_user(){
+ssh root@$ip "
+	useradd -u 5051 -s /sbin/nologin -M zabbix
+	"
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 关闭透明大页 ##
+function change_mem_page() {
+ssh root@$ip "cat >> /etc/rc.local << EOF
+echo "never" > /sys/kernel/mm/transparent_hugepage/enabled
+echo "never" > /sys/kernel/mm/transparent_hugepage/defrag
+EOF"
+ssh root@$ip "chmod +x /etc/rc.d/rc.local"
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 关闭IPV6 & 修改内核参数 ##
+function change_kernel() {
+ssh root@$ip "cat >> /etc/sysctl.conf << EOF
+net.ipv6.conf.all.disable_ipv6=1
+net.ipv6.conf.default.disable_ipv6 = 1
+vm.swappiness=0
+net.ipv4.tcp_fin_timeout = 1
+net.ipv4.tcp_keepalive_time = 1200
+net.ipv4.tcp_keepalive_intvl = 30
+net.ipv4.tcp_keepalive_probes = 3
+net.ipv4.tcp_mem = 94500000 915000000 927000000
+net.ipv4.tcp_synack_retries = 5
+net.ipv4.tcp_syn_retries = 5
+net.ipv4.tcp_rmem = 4096 87380 4194304
+net.ipv4.tcp_wmem = 4096 16384 4194304
+net.core.wmem_default = 8388608
+net.core.rmem_default = 8388608
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.core.netdev_max_backlog = 262144
+net.core.somaxconn = 65535
+net.ipv4.tcp_max_orphans = 3276800
+net.ipv4.tcp_max_syn_backlog = 262144
+net.ipv4.tcp_max_tw_buckets = 262144
+net.ipv4.ip_local_port_range = 9000 65000
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_sack = 1
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_tw_recycle = 0
+net.ipv4.tcp_timestamps = 1
+EOF"
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+#change file handle
+function change_limit() {
+ssh root@$ip "cat >> /etc/security/limits.conf << EOF
+*  soft  nofile 102400
+*  hard  nofile 102400
+*  soft  nproc  102400
+*  hard  nproc  102400
+EOF"
+ssh root@$ip "sed -i 's/4096/102400/' /etc/security/limits.d/20-nproc.conf"
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+#change sshd_config
+function change_sshd() {
+ssh root@$ip "
+sed -i 's/GSSAPIAuthentication yes/GSSAPIAuthentication no/' /etc/ssh/sshd_config;
+sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config;
+sed -i 's/#IgnoreUserKnownHosts no/IgnoreUserKnownHosts yes/' /etc/ssh/sshd_config;
+"
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+#change selinux config
+function change_selinux() {
+ssh root@$ip "
+sed -i -e 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config;
+"
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+#change system.conf log level#
+function change_systemd() {
+ssh root@$ip "
+sed -i 's/#LogLevel=info/LogLevel=notice/' /etc/systemd/system.conf
+"
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+#################################################################################

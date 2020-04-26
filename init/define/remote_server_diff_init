@@ -1,0 +1,90 @@
+#################################################################################
+## 设置DNS解析服务器
+function set_dns_resolv(){ 
+ssh root@$ip "
+echo nameserver 223.5.5.5 >> /etc/resolv.conf;
+echo nameserver 114.114.114.114 >> /etc/resolv.conf;
+"
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 设置root密码 
+function set_root_password() {
+	ssh root@$ip 'echo of\"1cycx3|passwd --stdin root' >>$file 2>&1
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 设置yum源
+function set_yum_repo() {
+	scp -r ${DIR}/centos7/init_yum/new/other/etc/yum.repos.d/CentOS-Base.repo root@$ip:/etc/yum.repos.d/ >>$file 2>&1
+	scp -r ${DIR}/centos7/init_yum/new/other/etc/yum.repos.d/epel.repo root@$ip:/etc/yum.repos.d/ >>$file 2>&1
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 设置hosts
+function set_hosts() {
+	HOST=$(ssh root@$ip "cat /etc/hostname")
+	ssh root@$ip "echo $ip $HOST >> /etc/hosts"
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 安装一些系统软件并更新系统
+function install_packet(){
+	ssh root@$ip "yum -y install man ntp openssl glibc openssh* centos-release dmidecode xfsdump vim wget traceroute mtr irqbalance net-tools subversion bridge-utils" >>$file 2>&1
+	ssh root@$ip "yum -y groupinstall Development Tools" >>$file 2>&1
+        ssh root@$ip "yum -y upgrade"  >>$file 2>&1
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+##################################################################################
+## 安装zabbix agent
+function install_zabbix_agent(){
+scp -rp ${DIR}/init_zabbix/zabbix_source/zabbix-2.2.9.tar.gz root@$ip:/usr/local/src/
+ssh root@$ip "tar zxf /usr/local/src/zabbix-2.2.9.tar.gz -C /usr/local/src/ && cd /usr/local/src/zabbix-2.2.9 && ./configure --prefix=/usr/local/zabbix --sysconfdir=/etc/zabbix --enable-agent && make -j 4 && make install" >/dev/null 2>&1
+ssh root@$ip "cp /usr/local/src/zabbix-2.2.9/misc/init.d/fedora/core/zabbix_agentd /etc/init.d/;
+chmod +x /etc/init.d/zabbix_*;
+chkconfig --add zabbix_agentd;
+chkconfig --level 3 zabbix_agentd on;
+sed -i 's#BASEDIR=/usr/local#BASEDIR=/usr/local/zabbix#g' /etc/init.d/zabbix_agentd;
+/bin/cp -ar /usr/local/zabbix/bin/* /usr/bin/;
+/bin/cp -ar /usr/local/zabbix/sbin/* /usr/sbin/;
+/bin/rm -rf /etc/zabbix/zabbix_agent.conf;
+/bin/rm -rf /etc/zabbix/zabbix_agent.conf.d"
+
+ssh root@$ip "cat >> /etc/services<< EOF
+zabbix-agent 10050/tcp #Zabbix Agent
+zabbix-agent 10050/udp #Zabbix Agent
+zabbix-trapper 10051/tcp #Zabbix Trapper
+zabbix-trapper 10051/udp #Zabbix Trapper
+EOF"
+}
+
+##################################################################################
+##  配置zabbix-agent
+function config_zabbix_agent(){
+HOST=$(ssh root@$ip "cat /etc/hostname")
+ssh root@$ip "cat > /etc/zabbix/zabbix_agentd.conf<< EOF
+LogFile=/tmp/zabbix_agentd.log
+Hostname=$ip
+Server=192.168.100.20
+ServerActive=192.168.100.20
+Include=/etc/zabbix/zabbix_agentd.conf.d/
+UnsafeUserParameters=1
+EOF"
+}
+#############################define common use function###########################

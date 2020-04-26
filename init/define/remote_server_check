@@ -1,0 +1,115 @@
+#!/bin/bash
+#################################################################################
+
+## 删除管理服务器上known_hosts文件中的IP地址记录 ##
+function delete_known_hosts(){
+    sed -i '/'"$ip"'/d' /root/.ssh/known_hosts
+}
+## 检测将要初始化服务器是否可达 ##
+function check_remote_ip(){
+    ping -c 2 -w 1 -i 0.01 $ip
+}
+## 检测将要初始化服务器的密码 特别注意：将要初始化服务器初始密码不能带特殊符号##
+function ssh_check_passwd(){
+    expect -c "
+    set timeout -1;
+    spawn ssh root@$ip echo 1
+    expect {
+        \"*yes/no*\" {send \"yes\r\"; exp_continue}
+        \"*password*\" {send \"$password\r\"; exp_continue}
+    }
+    "
+}
+## 检测将要初始化服务器的初始化状态 # 
+function ssh_check_new_host(){
+    expect -c "
+        set timeout 5;
+        spawn ssh root@$ip
+        expect {
+               \"*~]#\" {exit 11}
+    }
+    "
+}
+
+## 临时关闭将要初始化服务器的selinux ##
+function ssh_close_selinux(){
+    expect -c "
+        set timeout -1;
+        spawn $SSH root@$ip setenforce 0
+        expect {
+            \"*yes/no*\" {send \"yes\r\"; exp_continue}
+            \"*password*\" {send \"$password\r\"; exp_continue}
+    }
+    "
+}
+## 复制public key到将要初始化的服务器 #
+function scp_public_key(){
+    expect -c "
+        set timeout -1;
+        spawn scp -rp ${DIR}/centos7/.ssh/ root@$ip:/root/
+        expect {
+            \"*yes/no*\" {send \"yes\r\"; exp_continue}
+            \"*password*\" {send \"$password\r\"; exp_continue}
+    }
+    "
+}
+#################################################################################
+## 检测expect软件包
+check_expect(){
+    EXPECT_NUM=`rpm -qa|grep expect|wc -l`
+    if [ "$EXPECT_NUM" != "1" ];then
+       echo "please install expect packet"
+       exit 1
+    fi
+}
+## 检测远程服务器IP地址
+function check_ip(){
+	check_remote_ip > /dev/null 2>&1
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 检测远程服务器密码
+function check_passwd(){
+	local check_ip=`ssh_check_passwd |tail -1|sed 's/\r//g'`
+	if [ "$check_ip" = "1" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 检测远程服务器初始化状态
+function check_new_host(){
+        ssh_check_new_host > /dev/null 2>&1
+        if [ $? = 11 ];then
+              echo "$ip $FUNCNAME false"
+              exit 1
+        else
+              echo "$ip $FUNCNAME true"
+        fi
+}
+## 关闭远程服务器selinux
+function close_selinux(){
+	ssh_close_selinux >>$file 2>&1
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 复制public到远程服务器
+function copy_key(){
+	scp_public_key >>$file 2>&1
+	if [ "$?" = "0" ];then
+		echo "$ip $FUNCNAME true"
+	else
+		echo "$ip $FUNCNAME false"
+	fi
+}
+## 重启服务器
+function reboot_server(){
+	ssh root@$ip "reboot"
+}
+#################################################################################
