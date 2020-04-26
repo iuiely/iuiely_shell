@@ -34,7 +34,7 @@ function ssh_check_new_host(){
 function ssh_close_selinux(){
     expect -c "
         set timeout -1;
-        spawn $SSH root@$ip setenforce 0
+        spawn ssh root@$ip setenforce 0
         expect {
             \"*yes/no*\" {send \"yes\r\"; exp_continue}
             \"*password*\" {send \"$password\r\"; exp_continue}
