@@ -23,7 +23,6 @@ function set_root_password() {
 ## 设置yum源
 function set_yum_repo() {
 	scp -r ${DIR}/centos7/init_yum/new/other/etc/yum.repos.d/CentOS-Base.repo root@$ip:/etc/yum.repos.d/ >>$file 2>&1
-	scp -r ${DIR}/centos7/init_yum/new/other/etc/yum.repos.d/epel.repo root@$ip:/etc/yum.repos.d/ >>$file 2>&1
 	if [ "$?" = "0" ];then
 		echo "$ip $FUNCNAME true"
 	else
