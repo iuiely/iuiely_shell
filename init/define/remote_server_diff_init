@@ -1,10 +1,10 @@
 #################################################################################
 ## 设置DNS解析服务器
 function set_dns_resolv(){ 
-ssh root@$ip "
-echo nameserver 223.5.5.5 >> /etc/resolv.conf;
-echo nameserver 114.114.114.114 >> /etc/resolv.conf;
-"
+ssh root@$ip "cat >> /etc/resolv.conf << EOF
+nameserver 223.5.5.5
+nameserver 114.114.114.114
+EOF"
 	if [ "$?" = "0" ];then
 		echo "$ip $FUNCNAME true"
 	else
