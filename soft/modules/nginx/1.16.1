@@ -33,7 +33,8 @@ function compile_nginx(){
         " >/dev/null 2>&1
         echo $?
     else
-        printf "源码文件%s不存在" ${code_resource}
+        printf "源码文件%s不存在\n" ${code_resource}
+        exit 1
     fi
 }
 
