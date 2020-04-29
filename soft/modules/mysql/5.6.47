@@ -1,0 +1,55 @@
+##  安装方法 (1.yum 2.compile)
+#method='yum'
+method='compile'
+
+##  源代码位置 ,仅用于编译安装的情况
+code_resource="${DIR}/code/${soft}/mysql-5.6.47-linux-glibc2.12-x86_64.tar.gz"
+
+##  运行软件的用户和组
+user='mysql'
+group='mysql'
+
+##  远程服务器的端口号
+port=22
+
+##  安装软件的目标服务器
+des_server_list="${DIR}/server-list/${soft}/server"
+
+##  编译安装的参数,仅用于编译安装的情况
+compile_param="scripts/mysql_install_db --user=mysql --datadir=/data/mysqldata"
+
+##---------------------------------------------------------------##
+##  编译安装nginx的函数
+function compile_mysql(){
+    software_code_source=${code_resource##*/}
+    if [ -f ${code_resource} ];then
+        scp -P ${port} ${code_resource} root@${server}:/usr/local/src/ >/dev/null 2>&1
+        ssh -p ${port} root@${server} "
+            useradd -s /sbin/nologin -M ${user} && 
+            mkdir -p /data/mysqldata && 
+            chown -R mysql.mysql /data/mysqldata/ && 
+            tar zxvf /usr/local/src/${software_code_source} -C /usr/local/ && 
+            mv /usr/local/${software_code_source:0:-7} /usr/local/mysql && 
+            cd /usr/local/mysql && 
+            chown -R mysql.mysql /usr/local/mysql && 
+            ${compile_param}
+        " >/dev/null 2>&1
+        ssh -p ${port} root@${server} "
+            /bin/cp /usr/local/mysql/support-files/mysql.server /etc/init.d/mysqld &&
+            chmod 755 /etc/init.d/mysqld &&
+            chkconfig --add /etc/init.d/mysqld &&
+            chkconfig --level 3 mysqld on &&
+            echo 'export PATH=$PATH:/usr/local/mysql/bin' >> /etc/profile
+        " >/dev/null 2>&1
+        echo $?
+    else
+        printf "源码文件%s不存在" ${code_resource}
+    fi
+}
+
+##---------------------------------------------------------------##
+##  yum安装nginx的函数
+function yum_mysql(){
+    ssh root@${server} "yum install mysql -y" >/dev/null 2>&1
+    echo $?
+}

@@ -1,0 +1,45 @@
+##  安装方法 (1.yum 2.compile)
+#method='yum'
+method='compile'
+
+##  源代码位置 ,仅用于编译安装的情况
+code_resource="${DIR}/code/${soft}/nginx-1.16.1.tar.gz"
+
+##  运行软件的用户和组
+user='nginx'
+group='nginx'
+
+##  远程服务器的端口号
+port=22
+
+##  编译安装的参数,仅用于编译安装的情况
+compile_param="./configure --prefix=/usr/local/nginx-${version} --user=${user} --group=${group} --with-http_stub_status_module --with-http_ssl_module --with-pcre --with-http_flv_module && make -j 4 && make install "
+
+##  安装软件的目标服务器
+des_server_list="${DIR}/server-list/${soft}/server"
+
+##---------------------------------------------------------------##
+##  编译安装nginx的函数
+function compile_nginx(){
+    software_code_source=${code_resource##*/}
+    if [ -f ${code_resource} ];then
+        scp -P ${port} ${code_resource} root@${server}:/usr/local/src/ >/dev/null 2>&1
+        ssh -p ${port} root@${server} "
+            useradd -s /sbin/nologin -M ${user} && 
+            yum -y install openssl openssl-devel zlib zlib-devel pcre pcre-devel && 
+            tar zxvf /usr/local/src/${software_code_source} -C /usr/local/src/ && 
+            cd /usr/local/src/${software_code_source:0:-7} && 
+            ${compile_param}
+        " >/dev/null 2>&1
+        echo $?
+    else
+        printf "源码文件%s不存在" ${code_resource}
+    fi
+}
+
+##---------------------------------------------------------------##
+##  yum安装nginx的函数
+function yum_nginx(){
+    ssh root@${server} "yum install nginx -y" >/dev/null 2>&1
+    echo $?
+}
