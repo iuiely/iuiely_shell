@@ -1,5 +1,5 @@
 #!/bin/bash
-
+source $(cd $(dirname $0);pwd)/config
 ##-----------------------------------------------------------##
 ##  显示所有可以安装的软件
 function software_help(){
@@ -26,7 +26,6 @@ function help(){
     printf "\n"
 }
 ##-----------------------------------------------------------##
-source ${DIR}/config
 DIR=$(cd $(dirname $0);pwd)
 ##  安装软件的日志文件
 install_log=${DIR}/software-install.log
