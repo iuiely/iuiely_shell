@@ -136,7 +136,7 @@ case $param_number in
                     fi
                   ;;
                 compile)
-                    if [ -f ${des_server_list} ];then
+                    if [ -f ${code_resource} ] && [ -f ${des_server_list} ];then
                         for server in $(cat ${des_server_list});do
                             #  检测将要安装软件的服务器的可用性
                             ping -c 2 -w 1 -i 0.01 ${server} > /dev/null 2>&1
@@ -150,7 +150,7 @@ case $param_number in
                                 fi
                             fi
                         done
-                    elif [ ! -f ${des_server_list} ];then
+                    elif [ -f ${code_resource} ] && [ ! -f ${des_server_list} ];then
                         server=${des_server_list}
                         #  检测将要安装软件的服务器的可用性
                         ping -c 2 -w 1 -i 0.01 ${server} > /dev/null 2>&1
