@@ -26,6 +26,7 @@ function help(){
     printf "\n"
 }
 ##-----------------------------------------------------------##
+source ${DIR}/config
 DIR=$(cd $(dirname $0);pwd)
 ##  安装软件的日志文件
 install_log=${DIR}/software-install.log
@@ -34,7 +35,7 @@ param_number=$#
 soft=$1
 ##  传入的第2个参数是将要安装软件的版本，必须是已定义的版本
 version=$2
-
+##-----------------------------------------------------------##
 case $param_number in
     1)
         version_help ${soft}
