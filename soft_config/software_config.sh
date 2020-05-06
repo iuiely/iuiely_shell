@@ -185,9 +185,6 @@ function create_backup_dir(){
         mkdir -p ${backup_dir}
     fi
 }
-function update_config(){
-    echo "update config"
-}
 #---------------------------------------------------------#
 DIR=$(cd $(dirname $0);pwd)
 
@@ -320,8 +317,8 @@ case $action in
                         done
                       ;;
                     5)
-                        project_dest_server_list=$5
                         project_define 
+                        project_dest_server_list=$5
                         if [ -f ${project_dest_server_list} ];then
                             for server in $(awk -v env=$environment '$2==env{print $1}' ${project_dest_server_list});do
                                 check_remote_server ${server}
@@ -360,8 +357,8 @@ case $action in
                         done
                       ;;
                     5)
+                        project_define
                         project_dest_server_list=$5
-                        project_define 
                         if [ -f ${project_dest_server_list} ];then
                             for server in $(awk -v env=$environment '$2==env{print $1}' ${project_dest_server_list});do
                                 check_remote_server ${server}
