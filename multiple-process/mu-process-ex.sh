@@ -1,6 +1,5 @@
 #!/bin/bash
 
-dir="/opt/data/file-test"
  
 thread=4
 tmp_fifofile="/tmp/$$.fifo"
