@@ -1,0 +1,99 @@
+function run_cmd(){
+    local ip=$1
+    local run_result
+    if [ "${ip}" == "local" ];then
+        shift
+        local cmd="$*"
+        echo "" >> /tmp/${ip}.$$
+        echo -e "\t 连接设备 \t ${ip} \t successful\n" >> /tmp/${ip}.$$
+        eval  "${cmd}"    >> /tmp/${ip}.$$  2>&1
+        run_result=$?
+        echo "" >> /tmp/${ip}.$$
+        cat /tmp/${ip}.$$
+        rm -rf /tmp/${ip}.$$
+    else
+        local port=$2
+        shift 2
+        local cmd=$*
+        echo "" >> /tmp/${ip}.$$
+        echo -e "\t 连接设备 \t ${ip} \t successful\n" >> /tmp/${ip}.$$
+        ssh -p $port root@$ip "$cmd"  >> /tmp/${ip}.$$ 2>&1
+        run_result=$?
+        echo "" >> /tmp/${ip}.$$
+        cat /tmp/${ip}.$$
+        rm -rf /tmp/${ip}.$$
+    fi
+}
+function run_cp(){
+    local ip=$1
+    local run_result
+    if [ "${ip}" == "local" ];then
+        local source=$2
+        local dest=$3
+        printf "\t 复制文件到 \t %s \t Successful \n \n" ${ip}
+        /bin/cp -r $source $dest
+    else
+        local port=$2
+        local source=$3
+        local dest=$4
+        printf "\t 复制文件到 \t %s \t Successful \n \n" ${ip}
+        /usr/bin/scp -P ${port} -r ${source} root@${ip}:${dest} >/dev/null 2>&1
+    fi
+}
+function open_proc(){
+    local list=$1
+    local work=$2
+    shift 2
+    local cmd=$*
+    local row=$(cat ${list}|wc -l)
+    local ip port ip_port
+    if [ ${row} -gt 5 ];then
+        thread=5
+    else
+        thread=$row
+    fi
+    tmp_fifofile="/tmp/$$.fifo"
+    trap "exec 6>&-;exec 6<&-;exit 0" 2
+    mkfifo "$tmp_fifofile"
+    exec 6<>"$tmp_fifofile"
+    rm -f $tmp_fifofile
+    for ((i=0;i<$thread;i++));do
+        echo >&6
+    done
+    for ip_port in $(cat ${list} );do
+        read -u6
+        {
+            if [ "${ip_port}" == "local" ]&& [ "$work" == "cmd" ];then
+                run_cmd ${ip_port} "$cmd"
+            elif [ "${ip_port}" != "local" ]&& [ "$work" == "cmd"  ];then
+                ip=$(echo $ip_port|cut -d : -f1)
+                port=$(echo $ip_port|cut -d : -f2)
+                check_remote_server_result=$(check_remote_server ${ip})
+                if [ ${check_remote_server_result} -eq 0 ];then
+                    run_cmd ${ip} ${port} "$cmd"
+                else
+                    printf "\t 连接设备 \t %s \t Failed \n" ${ip}
+                    printf "\n"
+                    continue
+                fi
+            elif [ "${ip_port}" == "local" ] && [ "$work" == "cp"  ];then
+                run_cp ${ip_port} ${cmd}
+            elif [ "${ip_port}" != "local" ] && [ "$work" == "cp"  ];then
+                ip=$(echo $ip_port|cut -d : -f1)
+                port=$(echo $ip_port|cut -d : -f2)
+                check_remote_server_result=$(check_remote_server ${ip})
+                if [ ${check_remote_server_result} -eq 0 ];then
+                    run_cp ${ip} ${port} ${cmd}
+                else
+                    printf "\t 连接设备 \t %s \t Failed \n" ${ip}
+                    printf "\n"
+                    continue
+                fi
+            fi
+            echo >&6
+        } &
+    done
+    wait
+    exec 6>&-
+    exit 0
+}
