@@ -1,7 +1,0 @@
-define="define"
-confs="confs"
-backup="backup"
-serverlist="serverlist"
-
-##默认的项目定义模板文件
-default_define_template=$(cd $(dirname $0);pwd)/default/default-define-template
